@@ -16,7 +16,7 @@ cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/server
 npm run dev
 ```
 
-Terminal 3 - client web server (http://localhost:3001)
+Terminal 2 - client web server (http://localhost:3001)
 ```bash
 cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/client
 npm run serve
