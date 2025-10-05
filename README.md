@@ -9,7 +9,14 @@ A TypeScript-based WebSocket communication system designed to be easily migrated
 - npm or yarn
 - Modern web browser
 
-## How to run?
+### 1. Install Dependencies
+
+```bash
+# Install all dependencies (server + client)
+npm run install:all
+```
+
+### 2. How to run?
 Terminal 1 - WebSocket server (ws://localhost:8080)
 ```bash
 cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/server
@@ -20,29 +27,6 @@ Terminal 2 - client web server (http://localhost:3001)
 ```bash
 cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/client
 npm run serve
-```
-
-### 1. Install Dependencies
-
-```bash
-# Install all dependencies (server + client)
-npm run install:all
-```
-
-### 2. Start Development Environment
-
-**Option A - Start Both Servers (Recommended):**
-```bash
-npm run dev
-```
-
-**Option B - Start Servers Individually:**
-```bash
-# Terminal 1 - Start WebSocket Server
-npm run dev:server
-
-# Terminal 2 - Start Client Server
-npm run dev:client
 ```
 
 ### 3. Open Client Application
@@ -91,48 +75,6 @@ interface Message {
   payload: object;      // Message-specific data
   metadata?: object;    // Protocol-specific metadata
 }
-```
-
-## ⚡ Development Workflow
-
-### Quick Commands
-
-```bash
-# Start everything
-npm run dev
-
-# Start only WebSocket server
-npm run dev:server
-
-# Start only client server
-npm run dev:client
-
-# Build everything
-npm run build
-
-# Clean build artifacts
-npm run clean
-
-# Run tests
-npm run test
-
-# Get help
-npm run help
-```
-
-### Manual Development
-
-If you prefer individual control:
-
-```bash
-# Server development (with ts-node)
-cd server && npm run dev
-
-# Client development (watch TypeScript)
-cd client && npm run dev
-
-# Client server (Express)
-cd client && npm run serve
 ```
 
 ### Project Structure
