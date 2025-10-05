@@ -22,8 +22,6 @@ class SimpleServer {
   }
 
   private setupEventHandlers(): void {
-    console.debug('[SERVER] Setting up event handlers');
-
     // Handle new client connections
     this.communicationServer.onClientConnect((client: ClientInfo) => {
       console.info('[SERVER] New client connected', {
@@ -94,8 +92,6 @@ class SimpleServer {
   }
 
   private async sendWelcomeMessage(client: ClientInfo): Promise<void> {
-    console.debug('[SERVER] Sending welcome message', { clientId: client.id });
-
     const welcomeMessage = {
       type: MessageType.STATUS,
       payload: {
@@ -115,11 +111,6 @@ class SimpleServer {
   }
 
   private async notifyClientsAboutNewConnection(newClient: ClientInfo): Promise<void> {
-    console.debug('[SERVER] Notifying existing clients about new connection', {
-      newClientId: newClient.id,
-      totalClients: this.communicationServer.clientCount
-    });
-
     const notificationMessage = {
       type: MessageType.STATUS,
       payload: {
@@ -134,11 +125,6 @@ class SimpleServer {
     const clientIds = this.communicationServer.getClientIds()
       .filter(id => id !== newClient.id);
 
-    console.debug('[SERVER] Sending connection notification to clients', {
-      recipientCount: clientIds.length,
-      recipients: clientIds
-    });
-
     for (const clientId of clientIds) {
       try {
         await this.communicationServer.sendToClient(clientId, notificationMessage);
@@ -152,11 +138,6 @@ class SimpleServer {
   }
 
   private async notifyClientsAboutDisconnection(disconnectedClient: ClientInfo): Promise<void> {
-    console.debug('[SERVER] Notifying remaining clients about disconnection', {
-      disconnectedClientId: disconnectedClient.id,
-      remainingClients: this.communicationServer.clientCount
-    });
-
     const notificationMessage = {
       type: MessageType.STATUS,
       payload: {
@@ -178,12 +159,6 @@ class SimpleServer {
   }
 
   private async processMessage(message: Message, client: ClientInfo): Promise<void> {
-    console.debug('[SERVER] Processing message', {
-      messageId: message.id,
-      type: message.type,
-      clientId: client.id
-    });
-
     switch (message.type) {
       case MessageType.HANDSHAKE:
         await this.handleHandshakeMessage(message, client);
@@ -221,7 +196,6 @@ class SimpleServer {
 
     // Handshake is already handled by WebSocketServer
     // This is just for additional application-level processing
-    console.debug('[SERVER] Handshake processed successfully');
   }
 
   private async handleDataMessage(message: Message, client: ClientInfo): Promise<void> {
@@ -252,8 +226,6 @@ class SimpleServer {
 
     // Optionally broadcast to other clients
     if (message.payload.broadcast) {
-      console.debug('[SERVER] Broadcasting message to other clients');
-
       const broadcastMessage = {
         type: MessageType.DATA,
         payload: {
@@ -341,11 +313,6 @@ class SimpleServer {
   }
 
   private async handleHeartbeatMessage(message: Message, client: ClientInfo): Promise<void> {
-    console.debug('[SERVER] Processing heartbeat message', {
-      messageId: message.id,
-      clientId: client.id
-    });
-
     const heartbeatResponse = {
       type: MessageType.HEARTBEAT,
       payload: {
@@ -356,18 +323,9 @@ class SimpleServer {
     };
 
     await this.communicationServer.sendToClient(client.id, heartbeatResponse);
-
-    console.debug('[SERVER] Heartbeat response sent', {
-      clientId: client.id
-    });
   }
 
   private async sendErrorResponse(client: ClientInfo, errorMessage: string): Promise<void> {
-    console.debug('[SERVER] Sending error response', {
-      clientId: client.id,
-      errorMessage
-    });
-
     const errorResponse = {
       type: MessageType.ERROR,
       payload: {
@@ -378,9 +336,6 @@ class SimpleServer {
 
     try {
       await this.communicationServer.sendToClient(client.id, errorResponse);
-      console.debug('[SERVER] Error response sent successfully', {
-        clientId: client.id
-      });
     } catch (error) {
       console.error('[SERVER] Failed to send error response', {
         clientId: client.id,
