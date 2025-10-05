@@ -17,14 +17,14 @@ npm run install:all
 ```
 
 ### 2. How to run?
-Terminal 1 - WebSocket server (ws://localhost:8080)
 ```bash
+# Terminal 1 - WebSocket server (ws://localhost:8080)
 cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/server
 npm run dev
 ```
 
-Terminal 2 - client web server (http://localhost:3001)
 ```bash
+# Terminal 2 - client web server (http://localhost:3001)
 cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/client
 npm run serve
 ```
