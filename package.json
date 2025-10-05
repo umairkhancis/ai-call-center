@@ -1,0 +1,28 @@
+{
+  "name": "ai-call-center",
+  "version": "1.0.0",
+  "description": "AI Call Center with WebSocket to WebRTC communication system",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-start.js",
+    "dev:server": "node dev-start.js --server-only",
+    "dev:client": "node dev-start.js --client-only",
+    "build": "npm run build --prefix server && npm run build --prefix client",
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "clean": "npm run clean --prefix server && npm run clean --prefix client",
+    "test": "npm test --prefix server && npm test --prefix client",
+    "help": "node dev-start.js --help"
+  },
+  "keywords": [
+    "websocket",
+    "webrtc",
+    "typescript",
+    "ai",
+    "call-center"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

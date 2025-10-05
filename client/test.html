@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>Debug Test Page</h1>
+    <button id="testButton">Test Button</button>
+
+    <script>
+        console.log('=== BASIC JAVASCRIPT TEST ===');
+        console.log('DOM loaded, document ready state:', document.readyState);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== DOM CONTENT LOADED ===');
+
+            const button = document.getElementById('testButton');
+            console.log('Test button found:', !!button);
+
+            if (button) {
+                button.addEventListener('click', () => {
+                    console.log('Test button clicked!');
+                    alert('Button works!');
+                });
+                console.log('Event handler added to test button');
+            }
+        });
+
+        // Test if modules can load
+        try {
+            import('./dist/client/src/app/main.js')
+                .then(() => {
+                    console.log('✅ Module loaded successfully');
+                })
+                .catch((error) => {
+                    console.error('❌ Module load failed:', error);
+                });
+        } catch (error) {
+            console.error('❌ Import error:', error);
+        }
+    </script>
+</body>
+</html>
