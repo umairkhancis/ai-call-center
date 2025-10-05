@@ -33,8 +33,7 @@ A TypeScript-based WebSocket communication system designed to be easily migrated
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo>
-cd ai-call-center
+git clone git@github.com:umairkhancis/ai-call-center.git
 
 # 2. Setup everything (installs dependencies + builds)
 npm run setup
