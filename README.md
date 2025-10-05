@@ -9,6 +9,19 @@ A TypeScript-based WebSocket communication system designed to be easily migrated
 - npm or yarn
 - Modern web browser
 
+## How to run?
+Terminal 1 - WebSocket server (ws://localhost:8080)
+```bash
+cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/server
+npm run dev
+```
+
+Terminal 3 - client web server (http://localhost:3001)
+```bash
+cd /Users/umairahmed.khan/workspace/personal-workspace/ai-call-center/client
+npm run serve
+```
+
 ### 1. Install Dependencies
 
 ```bash
