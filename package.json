@@ -2,11 +2,11 @@
   "name": "ai-call-center",
   "version": "1.0.0",
   "description": "AI Call Center with OpenAI Realtime API and Twilio",
-  "main": "agent.ts",
+  "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "tsx agent.ts",
-    "dev": "tsx watch agent.ts"
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
   },
   "keywords": [
     "openai",

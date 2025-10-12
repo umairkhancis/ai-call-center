@@ -129,4 +129,3 @@ When a call comes in:
 - Tool approvals are handled automatically
 - MCP tools provide dynamic capabilities that can be updated at runtime
 - The system uses background results for certain tools to improve responsiveness
-
