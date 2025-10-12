@@ -26,7 +26,7 @@ export class CallController {
   }
 
   async handleMediaStream(connection: any): Promise<void> {
-    const session = this.sessionService.createSession(this.agent, connection, {
+    const session = this.sessionService.createTwilioSession(this.agent, connection, {
       apiKey: this.apiKey,
       model: 'gpt-realtime',
       voice: 'verse',

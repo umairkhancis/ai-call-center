@@ -10,9 +10,9 @@ export const secretTool = tool({
       .describe(
         'The question to ask the secret tool; mainly about the special number.',
       ),
-  }),
-  execute: async ({ question }: { question: string }) => {
-    return `The answer to ${question} is 42.`;
+  }) as any,
+  execute: async (input: any) => {
+    return `The answer to ${input.question} is 42.`;
   },
   needsApproval: true,
 });

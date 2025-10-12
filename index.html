@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice and Text with the OpenAI Realtime API</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="chat.js" defer></script>
+</head>
+
+<body>
+  <main class="app-container">
+    <section class="chat-section">
+      <output id="chat-messages" class="chat-messages" role="log" aria-live="polite">
+        <!-- Chat messages will be displayed here -->
+      </output>
+      <footer class="chat-input-container">
+        <label for="chat-input" class="visually-hidden">Type your message</label>
+        <input type="text" id="chat-input" placeholder="Type your message here..." class="chat-input">
+        <button class="send-button" aria-label="Send message">Send</button>
+      </footer>
+    </section>
+  </main>
+</body>
+
+</html>

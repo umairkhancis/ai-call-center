@@ -1,5 +1,7 @@
 import { RealtimeAgent, RealtimeSession } from '@openai/agents/realtime';
 import { TwilioRealtimeTransportLayer } from '@openai/agents-extensions';
+import { BrowserChatTransportLayer } from '../transport/browser-chat.transport.js';
+import type { WebSocket } from '@fastify/websocket';
 
 export interface SessionConfig {
   apiKey: string;
@@ -7,18 +9,23 @@ export interface SessionConfig {
   voice?: string;
 }
 
+export type TransportType = 'twilio' | 'browser-chat';
+
 export class SessionService {
-  createSession(
+  /**
+   * Create a session with Twilio transport
+   */
+  createTwilioSession(
     agent: RealtimeAgent,
     twilioWebSocket: any,
     config: SessionConfig,
   ): RealtimeSession {
-    const twilioTransportLayer = new TwilioRealtimeTransportLayer({
+    const transportLayer = new TwilioRealtimeTransportLayer({
       twilioWebSocket,
     });
 
     const session = new RealtimeSession(agent, {
-      transport: twilioTransportLayer,
+      transport: transportLayer,
       model: config.model || 'gpt-realtime',
       config: {
         voice: config.voice || 'verse',
@@ -28,6 +35,50 @@ export class SessionService {
     this.setupEventHandlers(session);
 
     return session;
+  }
+
+  /**
+   * Create a session with Browser Chat transport
+   * Configured for text-only modality
+   */
+  createBrowserChatSession(
+    agent: RealtimeAgent,
+    browserWebSocket: WebSocket,
+    config: SessionConfig,
+  ): RealtimeSession {
+    const transportLayer = new BrowserChatTransportLayer({
+      browserWebSocket,
+    });
+
+    const session = new RealtimeSession(agent, {
+      transport: transportLayer as any,
+      model: config.model || 'gpt-realtime',
+      config: {
+        // Configure for text-only mode (no audio)
+        modalities: ['text'],
+        // Turn transcription can be set to null for text-only mode
+        turn_detection: null,
+      },
+    });
+
+    this.setupEventHandlers(session);
+
+    return session;
+  }
+
+  /**
+   * Generic session creation (backwards compatible)
+   */
+  createSession(
+    agent: RealtimeAgent,
+    webSocket: any,
+    config: SessionConfig,
+    transportType: TransportType = 'twilio',
+  ): RealtimeSession {
+    if (transportType === 'browser-chat') {
+      return this.createBrowserChatSession(agent, webSocket, config);
+    }
+    return this.createTwilioSession(agent, webSocket, config);
   }
 
   private setupEventHandlers(session: RealtimeSession): void {
@@ -51,4 +102,3 @@ export class SessionService {
     console.log('Connected to the OpenAI Realtime API');
   }
 }
-

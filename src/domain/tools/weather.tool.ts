@@ -6,9 +6,9 @@ export const weatherTool = tool({
   description: 'Get the weather in a given location.',
   parameters: z.object({
     location: z.string(),
-  }),
-  execute: async ({ location }: { location: string }) => {
-    return `The weather in ${location} is sunny.`;
+  }) as any,
+  execute: async (input: any) => {
+    return `The weather in ${input.location} is sunny.`;
   },
 });
 

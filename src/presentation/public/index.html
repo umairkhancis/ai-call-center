@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI-powered call center chat interface">
+  <title>AI Call Center - Browser Chat</title>
+  <link rel="stylesheet" href="/public/style.css">
+</head>
+
+<body>
+  <main class="app-container">
+    <!-- Header -->
+    <header class="chat-header">
+      <h1>AI Call Center Assistant</h1>
+      <div id="connection-status" class="connection-status status-connecting">
+        <span class="status-dot"></span>
+        <span class="status-text">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Chat Section -->
+    <section class="chat-section">
+      <output id="chat-messages" class="chat-messages" role="log" aria-live="polite">
+        <!-- Welcome message -->
+        <div class="message system-message">
+          <div class="message-content">
+            Welcome! I'm your AI assistant. How can I help you today?
+          </div>
+        </div>
+      </output>
+
+      <!-- Input Container -->
+      <footer class="chat-input-container">
+        <label for="chat-input" class="visually-hidden">Type your message</label>
+        <input 
+          type="text" 
+          id="chat-input" 
+          placeholder="Type your message here..." 
+          class="chat-input"
+          autocomplete="off"
+          disabled>
+        <button class="send-button" aria-label="Send message" disabled>Send</button>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Load compiled JavaScript -->
+  <script type="module" src="/public/chat.js"></script>
+</body>
+
+</html>
+
