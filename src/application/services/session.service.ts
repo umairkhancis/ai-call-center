@@ -45,13 +45,15 @@ export class SessionService {
     agent: RealtimeAgent,
     browserWebSocket: WebSocket,
     config: SessionConfig,
-  ): RealtimeSession {
+  ): { session: RealtimeSession; transport: BrowserChatTransportLayer } {
+    // Create the transport layer that manages browser ↔ OpenAI communication
     const transportLayer = new BrowserChatTransportLayer({
       browserWebSocket,
     });
 
-    const session = new RealtimeSession(agent, {
-      transport: transportLayer as any,
+    // Create RealtimeSession with native websocket transport
+    const realTimeSession = new RealtimeSession(agent, {
+      transport: 'websocket',
       model: config.model || 'gpt-realtime',
       config: {
         // Configure for text-only mode (no audio)
@@ -59,9 +61,7 @@ export class SessionService {
       },
     });
 
-    this.setupEventHandlers(session);
-
-    return session;
+    return { session: realTimeSession, transport: transportLayer };
   }
 
   /**
@@ -72,21 +72,49 @@ export class SessionService {
     webSocket: any,
     config: SessionConfig,
     transportType: TransportType = 'twilio',
-  ): RealtimeSession {
+  ): RealtimeSession | { session: RealtimeSession; transport: BrowserChatTransportLayer } {
     if (transportType === 'browser-chat') {
       return this.createBrowserChatSession(agent, webSocket, config);
     }
     return this.createTwilioSession(agent, webSocket, config);
   }
 
-  private setupEventHandlers(session: RealtimeSession): void {
-    session.on(
+  /**
+   * Connect browser chat session to OpenAI
+   */
+  async connectBrowserChatSession(
+    sessionData: { session: RealtimeSession; transport: BrowserChatTransportLayer },
+    apiKey: string,
+  ): Promise<void> {
+    const { session, transport } = sessionData;
+    
+    // Setup basic session event handlers
+    this.setupBasicEventHandlers(session);
+    
+    // Connect the transport layer to OpenAI (this handles all the event forwarding)
+    await transport.connectToOpenAI(session, apiKey);
+    
+    console.log('[SessionService] Browser chat session connected to OpenAI');
+  }
+
+  /**
+   * Setup basic event handlers for Twilio sessions
+   */
+  private setupEventHandlers(realTimeSession: RealtimeSession): void {
+    this.setupBasicEventHandlers(realTimeSession);
+  }
+
+  /**
+   * Setup basic event handlers (tool approval, etc.)
+   */
+  private setupBasicEventHandlers(realTimeSession: RealtimeSession): void {
+    realTimeSession.on(
       'tool_approval_requested',
       (_context, _agent, approvalRequest) => {
         console.log(
           `Approving tool call for ${approvalRequest.tool.name}.`,
         );
-        session
+        realTimeSession
           .approve(approvalRequest.approvalItem)
           .catch((error: unknown) =>
             console.error('Failed to approve tool call.', error),
@@ -95,6 +123,10 @@ export class SessionService {
     );
   }
 
+
+  /**
+   * Connect a Twilio session to OpenAI (backwards compatible)
+   */
   async connectSession(session: RealtimeSession, apiKey: string): Promise<void> {
     await session.connect({ apiKey });
     console.log('Connected to the OpenAI Realtime API');

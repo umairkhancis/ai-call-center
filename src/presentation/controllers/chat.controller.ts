@@ -2,20 +2,18 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import { RealtimeAgent, RealtimeSession } from '@openai/agents/realtime';
 import { SessionService } from '../../application/services/session.service.js';
+import { BrowserChatTransportLayer } from '../../application/transport/browser-chat.transport.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-interface ChatMessage {
-  type: 'message' | 'ping';
-  content?: string;
-}
 
 export class ChatController {
-  // Store sessions per connection
+  // Store sessions and transports per connection
   private sessions: Map<WebSocket, RealtimeSession> = new Map();
+  private transports: Map<WebSocket, BrowserChatTransportLayer> = new Map();
 
   constructor(
     private readonly agent: RealtimeAgent,
@@ -25,83 +23,69 @@ export class ChatController {
 
   /**
    * Handle browser chat WebSocket connections
-   * Uses dummy implementation (no API calls)
+   * Connects to OpenAI Realtime API
    */
   async handleChatStream(connection: WebSocket): Promise<void> {
-    console.log('Browser chat client connected (dummy mode)');
+    console.log('[ChatController] Browser chat client connected');
 
     try {
+      // Create a RealtimeSession and BrowserChatTransport
+      const { session, transport } = this.sessionService.createBrowserChatSession(
+        this.agent,
+        connection,
+        {
+          apiKey: this.apiKey,
+          model: 'gpt-realtime',
+        },
+      );
+
+      // Store session and transport for this connection
+      this.sessions.set(connection, session);
+      this.transports.set(connection, transport);
+      console.log('[ChatController] Session created, active sessions:', this.sessions.size);
+
+      // Connect to OpenAI Realtime API through the transport layer
+      await this.sessionService.connectBrowserChatSession({ session, transport }, this.apiKey);
+      console.log('[ChatController] Connected to OpenAI Realtime API');
+
       // Send initial connection confirmation
       connection.send(JSON.stringify({ type: 'connected' }));
 
-      connection.on('message', async (data: Buffer) => {
-        try {
-          const message: ChatMessage = JSON.parse(data.toString());
-          
-          if (message.type === 'ping') {
-            connection.send(JSON.stringify({ type: 'pong' }));
-            return;
-          }
-
-          if (message.type === 'message' && message.content) {
-            console.log(`Received message: ${message.content}`);
-            
-            // Generate dummy response
-            const response = this.generateDummyAgentResponse(message.content);
-            
-            // Send response back to browser
-            connection.send(JSON.stringify({
-              type: 'assistant.message',
-              text: response,
-            }));
-            
-            connection.send(JSON.stringify({ type: 'response.done' }));
-          }
-        } catch (error) {
-          console.error('Error processing message:', error);
-          connection.send(JSON.stringify({
-            type: 'error',
-            error: 'Failed to process message',
-          }));
-        }
-      });
-
+      // Handle connection close
       connection.on('close', () => {
-        console.log('Browser chat client disconnected');
+        console.log('[ChatController] Browser chat client disconnected');
+        // Clean up session and transport
+        const transport = this.transports.get(connection);
+        if (transport) {
+          transport.close();
+          this.transports.delete(connection);
+        }
+        this.sessions.delete(connection);
+        console.log('[ChatController] Session cleaned up, active sessions:', this.sessions.size);
       });
 
       connection.on('error', (error: Error) => {
-        console.error('WebSocket error:', error);
+        console.error('[ChatController] WebSocket error:', error);
+        // Clean up session and transport on error
+        const transport = this.transports.get(connection);
+        if (transport) {
+          transport.close();
+          this.transports.delete(connection);
+        }
+        this.sessions.delete(connection);
       });
     } catch (error) {
-      console.error('Error handling browser chat stream:', error);
+      console.error('[ChatController] Error handling browser chat stream:', error);
+      // Clean up on error
+      const transport = this.transports.get(connection);
+      if (transport) {
+        transport.close();
+        this.transports.delete(connection);
+      }
+      this.sessions.delete(connection);
       connection.close();
     }
   }
-
-  /**
-   * Generate dummy agent response without API calls
-   * Simple keyword-based responses for testing
-   */
-  private generateDummyAgentResponse(userMessage: string): string {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    // Check for weather tool invocation
-    if (lowerMessage.includes('weather')) {
-      const locationMatch = userMessage.match(/weather\s+(?:in\s+)?([a-zA-Z\s]+)/i);
-      const location = locationMatch ? locationMatch[1].trim() : 'your location';
-      return `The weather in ${location} is sunny.`;
-    }
-    
-    // Check for secret tool invocation
-    if (lowerMessage.includes('secret') || lowerMessage.includes('special number')) {
-      return `The answer is 42.`;
-    }
-    
-    // Default response
-    return `I received your message: "${userMessage}". I'm a friendly assistant powered by AI. You can ask me about the weather or the special number!`;
-  }
-
 
   /**
    * Serve the chat interface HTML
@@ -127,6 +111,7 @@ export class ChatController {
       message: 'Browser Chat Service is running!',
       transport: 'browser-chat',
       activeSessions: this.sessions.size,
+      activeTransports: this.transports.size,
     });
   }
 }

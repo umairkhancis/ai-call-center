@@ -1,33 +1,41 @@
 import type { WebSocket } from '@fastify/websocket';
-import { EventEmitter } from 'node:events';
+import { RealtimeSession } from '@openai/agents/realtime';
 
 interface BrowserMessage {
   type: 'message' | 'ping';
   content?: string;
 }
 
-interface TransportMessage {
+interface OpenAIMessage {
   type: string;
+  text?: string;
   [key: string]: any;
 }
 
 /**
  * Browser Chat Transport Layer
- * Adapts browser WebSocket text messages to OpenAI Realtime API format
- * Similar to TwilioRealtimeTransportLayer but for text-based chat
+ * Acts as a bridge between browser WebSocket and OpenAI Realtime API
+ * Handles bidirectional communication: Browser ↔ Server ↔ OpenAI
  */
-export class BrowserChatTransportLayer extends EventEmitter {
-  private webSocket: WebSocket;
-  private connected: boolean = false;
+export class BrowserChatTransportLayer {
+  private browserWebSocket: WebSocket;
+  private openAISession: RealtimeSession | null = null;
+  private isConnectedToOpenAI: boolean = false;
+  
+  public status: 'connected' | 'disconnected' | 'connecting' | 'disconnecting' = 'disconnected';
+  public readonly muted: boolean | null = null;
 
   constructor({ browserWebSocket }: { browserWebSocket: WebSocket }) {
-    super();
-    this.webSocket = browserWebSocket;
-    this.setupWebSocket();
+    this.browserWebSocket = browserWebSocket;
+    this.setupBrowserWebSocket();
   }
 
-  private setupWebSocket(): void {
-    this.webSocket.on('message', (data: Buffer) => {
+  /**
+   * Setup browser WebSocket event handlers
+   * Handles messages from browser and forwards them to OpenAI
+   */
+  private setupBrowserWebSocket(): void {
+    this.browserWebSocket.on('message', (data: Buffer) => {
       try {
         const message: BrowserMessage = JSON.parse(data.toString());
         
@@ -37,134 +45,214 @@ export class BrowserChatTransportLayer extends EventEmitter {
         }
 
         if (message.type === 'message' && message.content) {
-          // Transform browser message to OpenAI Realtime format
-          this.emit('message', {
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: message.content,
-                },
-              ],
-            },
-          });
-
-          // Trigger response generation
-          this.emit('message', {
-            type: 'response.create',
-          });
+          console.log('[BrowserTransport] User message:', message.content);
+          this.forwardMessageToOpenAI(message.content);
         }
       } catch (error) {
-        console.error('Error parsing browser message:', error);
+        console.error('[BrowserTransport] Error parsing browser message:', error);
+        this.sendToBrowser({ type: 'error', message: 'Failed to parse message' });
       }
     });
 
-    this.webSocket.on('close', () => {
-      this.connected = false;
-      this.emit('close');
+    this.browserWebSocket.on('close', () => {
+      console.log('[BrowserTransport] Browser WebSocket closed');
+      this.status = 'disconnected';
+      this.disconnectFromOpenAI();
     });
 
-    this.webSocket.on('error', (error: Error) => {
-      console.error('Browser WebSocket error:', error);
-      this.emit('error', error);
+    this.browserWebSocket.on('error', (error: Error) => {
+      console.error('[BrowserTransport] Browser WebSocket error:', error);
+      this.sendToBrowser({ type: 'error', message: 'WebSocket connection error' });
     });
 
-    this.connected = true;
-    this.emit('open');
+    this.status = 'connected';
+    console.log('[BrowserTransport] Browser WebSocket ready');
   }
 
   /**
-   * Connect method required by RealtimeSession
-   * For browser WebSocket, the connection is already established
+   * Connect to OpenAI Realtime API
    */
-  async connect(): Promise<void> {
-    // WebSocket is already connected in constructor
-    // This method exists to satisfy the transport interface
-    return Promise.resolve();
+  async connectToOpenAI(session: RealtimeSession, apiKey: string): Promise<void> {
+    try {
+      console.log('[BrowserTransport] Connecting to OpenAI...');
+      this.openAISession = session;
+      
+      // Setup OpenAI session event handlers
+      this.setupOpenAIEventHandlers();
+      
+      // Connect to OpenAI
+      await session.connect({ apiKey });
+      this.isConnectedToOpenAI = true;
+      
+      console.log('[BrowserTransport] Connected to OpenAI Realtime API');
+      this.sendToBrowser({ type: 'openai_connected' });
+      
+    } catch (error) {
+      console.error('[BrowserTransport] Failed to connect to OpenAI:', error);
+      this.sendToBrowser({ type: 'error', message: 'Failed to connect to OpenAI' });
+      throw error;
+    }
+  }
+
+  /**
+   * Setup OpenAI session event handlers
+   * Handles responses from OpenAI and forwards them to browser
+   */
+  private setupOpenAIEventHandlers(): void {
+    if (!this.openAISession) return;
+
+    // Handle text responses from OpenAI
+    this.openAISession.transport.on('response.text.delta', (event: OpenAIMessage) => {
+      console.log('[BrowserTransport] OpenAI response delta:', event.delta);
+      this.sendToBrowser({
+        type: 'assistant.message.delta',
+        text: event.delta || '',
+      });
+    });
+
+    this.openAISession.transport.on('response.text.done', (event: OpenAIMessage) => {
+      console.log('[BrowserTransport] OpenAI response done:', event.text);
+      this.sendToBrowser({
+        type: 'assistant.message',
+        text: event.text || '',
+      });
+      this.sendToBrowser({ type: 'response.done' });
+    });
+
+    // Handle errors from OpenAI
+    this.openAISession.transport.on('error', (event: OpenAIMessage) => {
+      console.error('[BrowserTransport] OpenAI error:', event);
+      this.sendToBrowser({
+        type: 'error',
+        message: 'OpenAI API error',
+        details: event,
+      });
+    });
+
+    // Handle tool calls if needed
+    this.openAISession.on('tool_approval_requested', (_context, _agent, approvalRequest) => {
+      console.log('[BrowserTransport] Tool approval requested:', approvalRequest.tool.name);
+      // Auto-approve for now, could be made configurable
+      this.openAISession?.approve(approvalRequest.approvalItem)
+        .catch((error: unknown) => {
+          console.error('[BrowserTransport] Failed to approve tool call:', error);
+        });
+    });
+  }
+
+  /**
+   * Forward user message to OpenAI
+   */
+  private forwardMessageToOpenAI(messageContent: string): void {
+    if (!this.openAISession || !this.isConnectedToOpenAI) {
+      console.error('[BrowserTransport] Not connected to OpenAI');
+      this.sendToBrowser({ type: 'error', message: 'Not connected to OpenAI' });
+      return;
+    }
+
+    try {
+      // Send user message to OpenAI
+      this.openAISession.transport.sendEvent({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{
+            type: 'input_text',
+            text: messageContent,
+          }],
+        },
+      });
+
+      // Trigger response generation
+      this.openAISession.transport.sendEvent({
+        type: 'response.create',
+      });
+
+      console.log('[BrowserTransport] Forwarded message to OpenAI:', messageContent);
+    } catch (error) {
+      console.error('[BrowserTransport] Error forwarding message to OpenAI:', error);
+      this.sendToBrowser({ type: 'error', message: 'Failed to send message to OpenAI' });
+    }
+  }
+
+  /**
+   * Disconnect from OpenAI
+   */
+  private disconnectFromOpenAI(): void {
+    if (this.openAISession && this.isConnectedToOpenAI) {
+      console.log('[BrowserTransport] Disconnecting from OpenAI...');
+      // The session will handle cleanup when the transport is closed
+      this.isConnectedToOpenAI = false;
+      this.openAISession = null;
+    }
   }
 
   /**
    * Send message to the browser client
    */
   private sendToBrowser(data: any): void {
-    if (this.connected && this.webSocket.readyState === 1) {
-      this.webSocket.send(JSON.stringify(data));
+    if (this.status === 'connected' && this.browserWebSocket.readyState === 1) {
+      this.browserWebSocket.send(JSON.stringify(data));
     }
   }
 
   /**
-   * Handle messages from OpenAI Realtime API
-   * Transform and send to browser
+   * Send a message directly to OpenAI (public API)
    */
-  send(message: TransportMessage): void {
-    // Handle different message types from OpenAI
-    switch (message.type) {
-      case 'response.audio_transcript.delta':
-      case 'response.text.delta':
-        // Send incremental text updates
-        this.sendToBrowser({
-          type: 'text.delta',
-          delta: message.delta,
-        });
-        break;
-
-      case 'response.audio_transcript.done':
-      case 'response.text.done':
-        // Send complete response
-        this.sendToBrowser({
-          type: 'text.done',
-          text: message.text || message.transcript,
-        });
-        break;
-
-      case 'response.done':
-        // Response completed
-        this.sendToBrowser({
-          type: 'response.done',
-        });
-        break;
-
-      case 'error':
-        // Send error to browser
-        this.sendToBrowser({
-          type: 'error',
-          error: message.error,
-        });
-        break;
-
-      case 'conversation.item.created':
-        // Item created in conversation
-        if (message.item?.role === 'assistant') {
-          const content = message.item.content?.[0];
-          if (content?.text) {
-            this.sendToBrowser({
-              type: 'assistant.message',
-              text: content.text,
-            });
-          }
-        }
-        break;
-    }
+  sendMessageToOpenAI(messageContent: string): void {
+    this.forwardMessageToOpenAI(messageContent);
   }
 
   /**
-   * Close the connection
+   * Check if connected to both browser and OpenAI
+   */
+  isFullyConnected(): boolean {
+    return this.status === 'connected' && 
+           this.browserWebSocket.readyState === 1 && 
+           this.isConnectedToOpenAI;
+  }
+
+  /**
+   * Get connection status
+   */
+  getStatus(): {
+    browserConnected: boolean;
+    openAIConnected: boolean;
+    transportStatus: string;
+  } {
+    return {
+      browserConnected: this.status === 'connected' && this.browserWebSocket.readyState === 1,
+      openAIConnected: this.isConnectedToOpenAI,
+      transportStatus: this.status,
+    };
+  }
+
+  /**
+   * Close all connections
    */
   close(): void {
-    if (this.connected) {
-      this.connected = false;
-      this.webSocket.close();
+    if (this.status !== 'disconnected') {
+      console.log('[BrowserTransport] Closing all connections...');
+      this.status = 'disconnecting';
+      
+      // Disconnect from OpenAI first
+      this.disconnectFromOpenAI();
+      
+      // Close browser WebSocket
+      if (this.browserWebSocket.readyState === 1) {
+        this.browserWebSocket.close();
+      }
+      
+      this.status = 'disconnected';
     }
   }
 
   /**
-   * Check if connection is open
+   * Check if browser connection is open
    */
   isOpen(): boolean {
-    return this.connected && this.webSocket.readyState === 1;
+    return this.status === 'connected' && this.browserWebSocket.readyState === 1;
   }
 }
 

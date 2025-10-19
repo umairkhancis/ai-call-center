@@ -124,6 +124,7 @@ class ChatUI {
             case 'text.done':
             case 'assistant.message':
                 // Complete message
+                console.log('ChatUI: assistant.message', message);
                 if (message.text) {
                     this.currentAssistantMessage = message.text;
                     this.updateLastMessage(message.text, 'assistant');
