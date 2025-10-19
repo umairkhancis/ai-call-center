@@ -12,6 +12,9 @@ It uses OpenAI's Realtime API for natural language understanding and generation,
 
 ## Architecture
 
+<img width="1650" height="630" alt="Umair-Playground-ai-call-center drawio" src="https://github.com/user-attachments/assets/9fbf0d77-21e1-4dcb-b18f-42f2d88443ed" />
+
+
 The project follows clean architecture with three distinct layers:
 
 ```
