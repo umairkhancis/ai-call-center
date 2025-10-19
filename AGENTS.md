@@ -4,7 +4,7 @@ This document describes the AI agents and tools used in this call center applica
 
 ## Overview
 
-This project implements an AI-powered call center using OpenAI's Realtime API with a browser-based chat interface. The system uses a RealtimeAgent that can interact with users in real-time through text-based conversations, and execute various tools to assist users. The architecture supports multiple transport modes, with browser chat currently implemented and Twilio voice integration planned for future releases.
+This project implements an AI-powered call center using OpenAI's Realtime API with support for multiple communication channels. The system uses a RealtimeAgent that can interact with users in real-time through both text-based conversations (browser chat) and voice conversations (Twilio phone calls), executing various tools to assist users. The architecture supports configurable transport modes that can be enabled independently or simultaneously.
 
 ## Main Agent
 
@@ -14,7 +14,7 @@ This project implements an AI-powered call center using OpenAI's Realtime API wi
 
 **Type:** `RealtimeAgent`
 
-**Description:** A friendly assistant that handles browser chat conversations and can access various information sources and tools.
+**Description:** A friendly assistant that handles both browser chat conversations and phone calls, with access to various information sources and tools.
 
 **Instructions:**
 ```
@@ -23,9 +23,11 @@ You are a friendly assistant. When you use a tool always first say what you are 
 
 **Configuration:**
 - **Model:** `gpt-realtime`
-- **Voice:** `verse` (for future audio support)
-- **Transport:** Browser Chat WebSocket (via BrowserChatTransportLayer)
-- **Modalities:** `['text']` (text-only mode for browser chat)
+- **Voice:** `verse` (for Twilio voice calls)
+- **Transport:** Configurable transport layers:
+  - Browser Chat: `BrowserChatTransportLayer` with `['text']` modalities
+  - Twilio Voice: `TwilioRealtimeTransportLayer` with `['audio']` modalities
+- **Session Management:** Independent sessions per connection type
 
 ## Available Tools
 
@@ -87,9 +89,11 @@ session.on('mcp_tools_changed', (tools) => {
 
 ## Integration
 
+The agent supports dual integration modes that can be enabled independently or simultaneously:
+
 ### Browser Chat Integration
 
-The agent integrates with a web-based chat interface for text-based conversations:
+Web-based chat interface for text-based conversations:
 
 1. **Chat Interface Endpoint:** `/chat`
    - Serves the HTML chat interface
@@ -105,15 +109,48 @@ The agent integrates with a web-based chat interface for text-based conversation
    - Returns service health and active session count
    - Provides connection diagnostics
 
+### Twilio Voice Integration
+
+Traditional phone call interface for voice-based conversations:
+
+1. **Health Check Endpoint:** `/`
+   - Returns service status: "Twilio Media Stream Server is running!"
+   - General health monitoring
+
+2. **Incoming Call Endpoint:** `/incoming-call`
+   - Twilio webhook endpoint for incoming calls
+   - Returns TwiML response to establish WebSocket connection
+   - Plays initial greeting: "O.K. you can start talking!"
+
+3. **Media Stream Endpoint:** `/media-stream`
+   - WebSocket endpoint for real-time audio streaming
+   - Creates a new session for each call
+   - Connects to OpenAI Realtime API in audio mode
+
 ### Session Management
 
-Each browser connection creates a new `RealtimeSession` with:
-- The Greeter agent
-- Browser chat transport layer for text messaging
-- Text-only modality configuration  
-- Event listeners for tool approvals and MCP tool changes
-- WebSocket connection management and cleanup
-- Session isolation (each browser tab gets independent session)
+The system creates independent `RealtimeSession` instances for each connection type:
+
+#### Browser Chat Sessions
+- **Service:** `BrowserChatSessionService`
+- **Transport:** `BrowserChatTransportLayer`
+- **Modalities:** `['text']` for text-only communication
+- **Session Isolation:** Each browser tab gets independent session
+- **Connection Management:** WebSocket lifecycle handling
+
+#### Twilio Voice Sessions
+- **Service:** `CallChatSessionService`
+- **Transport:** `TwilioRealtimeTransportLayer`
+- **Modalities:** `['audio']` for voice communication
+- **Voice Configuration:** Uses 'verse' voice model
+- **Audio Handling:** Real-time audio stream processing
+
+#### Common Session Features
+- The same Greeter agent serves both transport types
+- Automatic tool approval handling
+- MCP tool change event listeners
+- Error handling and connection cleanup
+- Session status monitoring
 
 ## Environment Variables
 
@@ -122,25 +159,42 @@ Required environment variables:
 - `OPENAI_API_KEY`: OpenAI API key with Realtime API access
 - `PORT` (optional): Server port (defaults to 5050)
 - `TRANSPORT_MODE` (optional): Transport mode selection
-  - `browser-chat`: Enable browser chat interface (default)
-  - `twilio`: Enable Twilio voice integration (planned)
-  - `both`: Enable all transport modes (planned)
+  - `browser-chat`: Enable browser chat interface only
+  - `twilio`: Enable Twilio voice integration only
+  - `both`: Enable all transport modes simultaneously (default)
 
 ## Usage
 
+The agent can be accessed through two different interfaces:
+
 ### Browser Chat Interface
 
-When a user opens the chat interface:
+For text-based conversations:
 1. User navigates to `/chat` in their web browser
 2. A WebSocket connection is established to `/chat-stream`
 3. The Greeter agent initiates text-based conversation
-4. Users can type messages asking about:
-   - Weather information: "What's the weather in London?"
-   - D&D information: "Tell me about dungeons and dragons"
-   - Wikipedia content: "Search for artificial intelligence"
-   - The special number: "What is the special number?"
+4. Users can type messages asking about various topics
 5. The agent announces tool usage before executing
 6. Responses appear in real-time in the chat interface
+
+### Twilio Voice Interface
+
+For voice-based conversations:
+1. User calls the configured Twilio phone number
+2. Twilio routes the call to `/incoming-call`
+3. A WebSocket connection is established to `/media-stream`
+4. The Greeter agent plays greeting and initiates voice conversation
+5. Users can speak naturally about various topics
+6. The agent announces tool usage before executing
+7. Responses are spoken back through text-to-speech
+
+### Common Example Queries
+
+Both interfaces support the same functionality:
+- Weather information: "What's the weather in London?"
+- D&D information: "Tell me about dungeons and dragons"
+- Wikipedia content: "Search for artificial intelligence"
+- The special number: "What is the special number?"
 
 ### Example Conversation Flow
 ```
@@ -149,6 +203,7 @@ Agent: I'm going to check the weather for New York.
 [Agent uses weather tool]
 Agent: The current weather in New York is...
 ```
+*Note: This flow works identically in both text (browser) and voice (Twilio) modes.*
 
 ## Technical Implementation
 
@@ -172,13 +227,26 @@ export const greeterAgent = new RealtimeAgent({
 
 ### Session Service Integration
 
-The browser chat implementation uses `BrowserChatSessionService`:
+The system uses dedicated session services for each transport mode:
 
-- **Connection Management**: Handles WebSocket lifecycle
-- **Message Transformation**: Converts browser messages to OpenAI format
+#### BrowserChatSessionService
+- **Connection Management**: Handles WebSocket lifecycle for browser clients
+- **Message Transformation**: Converts JSON messages to OpenAI format
 - **Session Isolation**: Each browser tab gets independent session
+- **Transport Layer**: Uses `BrowserChatTransportLayer`
+- **Modalities**: Text-only communication
+
+#### CallChatSessionService  
+- **Connection Management**: Handles Twilio WebSocket lifecycle
+- **Audio Processing**: Converts audio streams to OpenAI format
+- **Session Isolation**: Each phone call gets independent session
+- **Transport Layer**: Uses `TwilioRealtimeTransportLayer`
+- **Modalities**: Audio-only communication
+
+#### Common Service Features
 - **Error Handling**: Graceful connection cleanup and error recovery
 - **Event Handling**: Tool approvals and MCP tool updates
+- **Session Monitoring**: Active session tracking and management
 
 ### Clean Architecture Benefits
 
@@ -189,32 +257,46 @@ The browser chat implementation uses `BrowserChatSessionService`:
 
 ## Transport Modes
 
-The system is designed to support multiple transport modes:
+The system supports multiple transport modes that can be configured independently:
 
-### Current Implementation
-- **Browser Chat**: Fully implemented text-based chat interface
+### Fully Implemented Transport Modes
+
+#### Browser Chat
+- **Status**: ✅ Fully implemented and production-ready
+- **Features**: 
   - Real-time WebSocket messaging
   - Modern web UI with connection status
   - Mobile and desktop responsive design
   - Session isolation per browser tab
+  - JSON message protocol
 
-### Planned Features
-- **Twilio Voice**: Phone call integration (future)
+#### Twilio Voice
+- **Status**: ✅ Fully implemented and production-ready
+- **Features**:
   - Voice-based conversations
-  - Audio streaming with OpenAI Realtime API
+  - Real-time audio streaming with OpenAI Realtime API
   - Traditional telephony interface
+  - Automatic call routing and session management
+  - Base64-encoded PCM audio protocol
 
-- **Multiple Modes**: Support for running both simultaneously
+#### Multiple Modes
+- **Status**: ✅ Fully implemented
+- **Features**:
+  - Both transports can run simultaneously
   - Same agent logic serves all transport types
-  - Independent session management
-  - Unified tool access across modes
+  - Independent session management per connection
+  - Unified tool access across all modes
+  - Environment-based configuration
 
 ## Notes
 
 - The agent always announces what it's about to do before using a tool
-- Tool approvals are handled automatically in the session service
+- Tool approvals are handled automatically in both session services
 - MCP tools provide dynamic capabilities that can be updated at runtime
 - The system uses background results for certain tools to improve responsiveness
-- Each browser connection creates an isolated session with the same agent
-- The agent works identically across transport modes - only the I/O format changes
-- Text mode enables faster testing and development compared to audio-based interfaces
+- Each connection (browser or phone) creates an isolated session with the same agent
+- The agent works identically across transport modes - only the I/O format changes (text vs audio)
+- Browser chat enables faster testing and development compared to phone-based testing
+- Both transport modes share the same domain logic and tools
+- Sessions are completely independent between transport types
+- Configuration allows running one or both modes simultaneously
