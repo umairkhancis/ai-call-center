@@ -30,7 +30,7 @@ export class ChatController {
 
     try {
       // Create a RealtimeSession and BrowserChatTransport
-      const { session, transport } = this.sessionService.createBrowserChatSession(
+      const { session, transport } = this.sessionService.createSession(
         this.agent,
         connection,
         {
@@ -45,7 +45,7 @@ export class ChatController {
       console.log('[ChatController] Session created, active sessions:', this.sessions.size);
 
       // Connect to OpenAI Realtime API through the transport layer
-      await this.sessionService.connectBrowserChatSession({ session, transport }, this.apiKey);
+      await this.sessionService.connectSession({ session, transport }, this.apiKey);
       console.log('[ChatController] Connected to OpenAI Realtime API');
 
       // Send initial connection confirmation

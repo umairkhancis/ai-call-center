@@ -12,36 +12,12 @@ export interface SessionConfig {
 export type TransportType = 'twilio' | 'browser-chat';
 
 export class SessionService {
-  /**
-   * Create a session with Twilio transport
-   */
-  createTwilioSession(
-    agent: RealtimeAgent,
-    twilioWebSocket: any,
-    config: SessionConfig,
-  ): RealtimeSession {
-    const transportLayer = new TwilioRealtimeTransportLayer({
-      twilioWebSocket,
-    });
-
-    const session = new RealtimeSession(agent, {
-      transport: transportLayer,
-      model: config.model || 'gpt-realtime',
-      config: {
-        voice: config.voice || 'verse',
-      },
-    });
-
-    this.setupEventHandlers(session);
-
-    return session;
-  }
 
   /**
    * Create a session with Browser Chat transport
    * Configured for text-only modality
    */
-  createBrowserChatSession(
+  createSession(
     agent: RealtimeAgent,
     browserWebSocket: WebSocket,
     config: SessionConfig,
@@ -64,32 +40,18 @@ export class SessionService {
     return { session: realTimeSession, transport: transportLayer };
   }
 
-  /**
-   * Generic session creation (backwards compatible)
-   */
-  createSession(
-    agent: RealtimeAgent,
-    webSocket: any,
-    config: SessionConfig,
-    transportType: TransportType = 'twilio',
-  ): RealtimeSession | { session: RealtimeSession; transport: BrowserChatTransportLayer } {
-    if (transportType === 'browser-chat') {
-      return this.createBrowserChatSession(agent, webSocket, config);
-    }
-    return this.createTwilioSession(agent, webSocket, config);
-  }
 
   /**
    * Connect browser chat session to OpenAI
    */
-  async connectBrowserChatSession(
+  async connectSession(
     sessionData: { session: RealtimeSession; transport: BrowserChatTransportLayer },
     apiKey: string,
   ): Promise<void> {
     const { session, transport } = sessionData;
     
     // Setup basic session event handlers
-    this.setupBasicEventHandlers(session);
+    this.setupEventHandlers(session);
     
     // Connect the transport layer to OpenAI (this handles all the event forwarding)
     await transport.connectToOpenAI(session, apiKey);
@@ -101,13 +63,6 @@ export class SessionService {
    * Setup basic event handlers for Twilio sessions
    */
   private setupEventHandlers(realTimeSession: RealtimeSession): void {
-    this.setupBasicEventHandlers(realTimeSession);
-  }
-
-  /**
-   * Setup basic event handlers (tool approval, etc.)
-   */
-  private setupBasicEventHandlers(realTimeSession: RealtimeSession): void {
     realTimeSession.on(
       'tool_approval_requested',
       (_context, _agent, approvalRequest) => {
@@ -121,14 +76,5 @@ export class SessionService {
           );
       },
     );
-  }
-
-
-  /**
-   * Connect a Twilio session to OpenAI (backwards compatible)
-   */
-  async connectSession(session: RealtimeSession, apiKey: string): Promise<void> {
-    await session.connect({ apiKey });
-    console.log('Connected to the OpenAI Realtime API');
   }
 }
