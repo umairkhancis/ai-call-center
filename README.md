@@ -1,10 +1,10 @@
 # AI Call Center
 
-An AI-powered call center built with OpenAI's Realtime API and Twilio, following clean architecture principles.
+An AI-powered call center built with OpenAI's Realtime API, featuring a browser-based chat interface and following clean architecture principles.
 
 ## Overview
 
-This application enables real-time voice conversations with an AI agent through phone calls. It uses OpenAI's Realtime API for natural language understanding and generation, integrated with Twilio for telephony.
+This application enables real-time conversations with an AI agent through a modern web-based chat interface. It uses OpenAI's Realtime API for natural language understanding and generation, with support for multiple transport modes including browser chat and future Twilio telephony integration.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ The project follows clean architecture with three distinct layers:
 ```
 src/
 ├── config/              # Configuration layer
-│   └── environment.ts   # Environment variables management
+│   └── environment.ts   # Environment variables & transport mode management
 │
 ├── domain/              # Domain layer (Inner layer - no external dependencies)
 │   ├── agents/          # AI agent definitions
@@ -26,14 +26,18 @@ src/
 │
 ├── application/         # Application layer (Orchestration)
 │   ├── services/        # Business services
-│   │   └── session.service.ts
+│   │   └── browser-chat-session.service.ts
 │   └── server.ts        # Server setup
 │
 ├── presentation/        # Presentation layer (External interfaces)
 │   ├── controllers/     # Request handlers
-│   │   └── call.controller.ts
-│   └── routes/          # Route definitions
-│       └── call.routes.ts
+│   │   └── chat.controller.ts
+│   ├── routes/          # Route definitions
+│   │   └── chat.routes.ts
+│   └── public/          # Static files for browser interface
+│       ├── index.html   # Chat interface HTML
+│       ├── chat.js      # Client-side chat logic
+│       └── style.css    # Chat interface styling
 │
 └── index.ts            # Application entry point
 ```
@@ -55,7 +59,8 @@ src/
 **Presentation Layer (Outer):**
 - HTTP/WebSocket endpoints
 - Request/response handling
-- Twilio integration
+- Browser chat interface
+- Static file serving
 - Depends on application and domain layers
 
 ## Getting Started
@@ -65,7 +70,7 @@ src/
 - Node.js (v18 or higher)
 - npm
 - OpenAI API key with Realtime API access
-- Twilio account (for phone integration)
+- Modern web browser with WebSocket support
 
 ### Installation
 
@@ -80,7 +85,16 @@ Create a `.env` file in the root directory:
 ```env
 OPENAI_API_KEY=your_openai_api_key
 PORT=5050
+TRANSPORT_MODE=browser-chat
 ```
+
+#### Transport Mode Options
+
+- `browser-chat`: Enable browser-based chat interface (default and currently implemented)
+- `twilio`: Enable Twilio voice integration (planned feature)
+- `both`: Enable all transport modes (planned feature)
+
+**Current Status**: Only `browser-chat` mode is fully implemented. The application currently focuses on providing a modern web-based chat interface.
 
 ### Running the Application
 
@@ -94,18 +108,20 @@ npm start
 
 ## API Endpoints
 
-### GET /
-Health check endpoint
-- **Response:** `{ "message": "Twilio Media Stream Server is running!" }`
+### GET /chat
+Serves the browser chat interface
+- **Response:** HTML page with chat UI
+- **Features:** Real-time messaging, connection status, responsive design
 
-### POST /incoming-call
-Twilio webhook endpoint for incoming calls
-- **Returns:** TwiML response with WebSocket URL
+### GET /chat-status
+Chat service health check endpoint
+- **Response:** `{ "status": "online", "message": "Browser Chat Service is running!", "transport": "browser-chat", "activeSessions": <number> }`
 
-### WS /media-stream
-WebSocket endpoint for real-time audio streaming
-- **Protocol:** Twilio Media Stream
-- **Function:** Bidirectional audio streaming with OpenAI Realtime API
+### WS /chat-stream
+WebSocket endpoint for real-time text-based chat
+- **Protocol:** JSON message format
+- **Function:** Bidirectional text messaging with OpenAI Realtime API
+- **Message Format:** `{ "type": "message", "content": "user message" }`
 
 ## Available Tools
 
@@ -124,8 +140,10 @@ Ask about the special number (returns 42)
 - **Approval:** Required
 
 ### MCP Hosted Tools
-- **DnD Tool:** Dungeons & Dragons information
-- **DeepWiki Tool:** Deep Wikipedia access
+- **DnD Tool:** Dungeons & Dragons information and resources
+- **DeepWiki Tool:** Deep Wikipedia content and knowledge access
+
+*Note: These MCP (Model Context Protocol) tools provide hosted services accessible through the chat interface.*
 
 ## Architecture Principles
 
@@ -170,27 +188,52 @@ Each layer is self-contained with clear responsibilities:
 
 ## Testing
 
-To test the application:
+To test the browser chat interface:
 
 1. Start the server: `npm run dev`
-2. Use ngrok or similar to expose localhost: `ngrok http 5050`
-3. Configure Twilio webhook to point to: `https://your-ngrok-url/incoming-call`
-4. Call your Twilio number
+2. Open your browser to: `http://localhost:5050/chat`
+3. Start chatting with the AI assistant
+4. Try asking about:
+   - Weather: "What is the weather in London?"
+   - Secret number: "What is the special number?"
+   - D&D information: "Tell me about dungeons and dragons"
+   - Wikipedia: "Search for information about artificial intelligence"
 
 ## Future Enhancements
 
-- Browser-based chat interface
+- Twilio voice integration for phone calls
 - Multiple agent routing
-- Call recording and analytics
+- Call/chat recording and analytics
 - Enhanced MCP tool integration
 - Multi-language support
+- Audio support in browser (voice chat)
+- Message history and persistence
+- User authentication and profiles
+- Multi-user chat rooms
 
 ## License
 
 ISC
 
+## Current Implementation Status
+
+**✅ Implemented:**
+- Browser-based chat interface with real-time messaging
+- OpenAI Realtime API integration for text-based conversations  
+- Agent with weather tool, secret tool, and MCP hosted tools (DnD, DeepWiki)
+- Clean architecture with proper layer separation
+- TypeScript implementation with modern tooling
+- Static file serving for chat UI
+
+**🚧 Planned:**
+- Twilio voice call integration
+- Multiple transport mode support
+- Enhanced UI features and mobile responsiveness
+
 ## Documentation
 
 - [AGENTS.md](./AGENTS.md) - Agent and tool documentation
-- [ARCHIECTURE.md](./ARCHIECTURE.md) - Detailed architecture documentation
+- [ARCHIECTURE.md](./ARCHIECTURE.md) - Detailed architecture documentation  
+- [BROWSER_CHAT_IMPLEMENTATION.md](./BROWSER_CHAT_IMPLEMENTATION.md) - Browser chat implementation details
+- [TEXT_MODE_IMPLEMENTATION.md](./TEXT_MODE_IMPLEMENTATION.md) - Text mode technical details
 
