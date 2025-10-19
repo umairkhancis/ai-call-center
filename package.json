@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
+    "build": "tsc && npm run build:client",
     "build:client": "tsc -p src/presentation/public/tsconfig.json",
     "start": "npm run build:client && tsx src/index.ts",
     "dev": "npm run build:client && tsx watch src/index.ts",
