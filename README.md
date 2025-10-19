@@ -10,7 +10,23 @@ This application enables real-time conversations with an AI agent through multip
 
 It uses OpenAI's Realtime API for natural language understanding and generation, with configurable transport modes that can be enabled independently or simultaneously.
 
-## Architecture
+## System Architecture Overview
+
+<img width="588" height="727" alt="Screenshot 2025-10-20 at 01 18 09" src="https://github.com/user-attachments/assets/d15720cb-e14e-47c1-860b-3b99b7779c2c" />
+
+## System Architecture High Level Design
+<img width="529" height="699" alt="Screenshot 2025-10-20 at 01 37 00" src="https://github.com/user-attachments/assets/f12e49ff-0b64-4c50-8f96-ebb46ead273a" />
+
+
+## Twilio Voice Call Flow
+
+<img width="890" height="622" alt="Screenshot 2025-10-20 at 01 21 15" src="https://github.com/user-attachments/assets/7dc374c6-03ed-4e15-bf9f-029b08beb4bc" />
+
+## Browser Chat Flow
+
+<img width="892" height="633" alt="Screenshot 2025-10-20 at 01 22 27" src="https://github.com/user-attachments/assets/0a03160e-8d71-465c-b7ad-32f9ae5d5059" />
+
+
 
 The project follows clean architecture with three distinct layers:
 
@@ -270,11 +286,4 @@ ISC
 - Enhanced UI features and mobile responsiveness
 - Advanced session management and analytics
 - Additional transport integrations (SMS, Slack, etc.)
-
-## Documentation
-
-- [AGENTS.md](./AGENTS.md) - Agent and tool documentation
-- [ARCHIECTURE.md](./ARCHIECTURE.md) - Detailed architecture documentation  
-- [BROWSER_CHAT_IMPLEMENTATION.md](./BROWSER_CHAT_IMPLEMENTATION.md) - Browser chat implementation details
-- [TEXT_MODE_IMPLEMENTATION.md](./TEXT_MODE_IMPLEMENTATION.md) - Text mode technical details
 
