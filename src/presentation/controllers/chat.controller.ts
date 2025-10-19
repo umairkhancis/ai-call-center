@@ -1,8 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
-import { RealtimeAgent, RealtimeSession } from '@openai/agents/realtime';
-import { SessionService } from '../../application/services/session.service.js';
-import { BrowserChatTransportLayer } from '../../application/transport/browser-chat.transport.js';
+import { RealtimeAgent } from '@openai/agents/realtime';
+import { BrowserChatSessionService } from '../../application/services/browser-chat-session.service.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,13 +10,11 @@ const __dirname = path.dirname(__filename);
 
 
 export class ChatController {
-  // Store sessions and transports per connection
-  private sessions: Map<WebSocket, RealtimeSession> = new Map();
-  private transports: Map<WebSocket, BrowserChatTransportLayer> = new Map();
+  // Store browser chat sessions per connection
+  private sessions: Map<WebSocket, BrowserChatSessionService> = new Map();
 
   constructor(
     private readonly agent: RealtimeAgent,
-    private readonly sessionService: SessionService,
     private readonly apiKey: string,
   ) {}
 
@@ -25,65 +22,58 @@ export class ChatController {
    * Handle browser chat WebSocket connections
    * Connects to OpenAI Realtime API
    */
-  async handleChatStream(connection: WebSocket): Promise<void> {
+  async handleChatStream(webSocket: WebSocket): Promise<void> {
     console.log('[ChatController] Browser chat client connected');
 
     try {
-      // Create a RealtimeSession and BrowserChatTransport
-      const { session, transport } = this.sessionService.createSession(
-        this.agent,
-        connection,
-        {
-          apiKey: this.apiKey,
-          model: 'gpt-realtime',
-        },
-      );
+      // Create a combined browser chat session service
+      const sessionService = new BrowserChatSessionService(webSocket);
 
-      // Store session and transport for this connection
-      this.sessions.set(connection, session);
-      this.transports.set(connection, transport);
+      // Store session service for this connection
+      this.sessions.set(webSocket, sessionService);
       console.log('[ChatController] Session created, active sessions:', this.sessions.size);
 
-      // Connect to OpenAI Realtime API through the transport layer
-      await this.sessionService.connectSession({ session, transport }, this.apiKey);
+      // Create and connect session to OpenAI Realtime API
+      await sessionService.createAndConnectSession(this.agent, {
+        apiKey: this.apiKey,
+        model: 'gpt-realtime',
+      });
+
       console.log('[ChatController] Connected to OpenAI Realtime API');
 
       // Send initial connection confirmation
-      connection.send(JSON.stringify({ type: 'connected' }));
+      webSocket.send(JSON.stringify({ type: 'connected' }));
 
       // Handle connection close
-      connection.on('close', () => {
+      webSocket.on('close', () => {
         console.log('[ChatController] Browser chat client disconnected');
-        // Clean up session and transport
-        const transport = this.transports.get(connection);
-        if (transport) {
-          transport.close();
-          this.transports.delete(connection);
+        // Clean up session
+        const sessionService = this.sessions.get(webSocket);
+        if (sessionService) {
+          sessionService.close();
         }
-        this.sessions.delete(connection);
+        this.sessions.delete(webSocket);
         console.log('[ChatController] Session cleaned up, active sessions:', this.sessions.size);
       });
 
-      connection.on('error', (error: Error) => {
+      webSocket.on('error', (error: Error) => {
         console.error('[ChatController] WebSocket error:', error);
-        // Clean up session and transport on error
-        const transport = this.transports.get(connection);
-        if (transport) {
-          transport.close();
-          this.transports.delete(connection);
+        // Clean up session on error
+        const sessionService = this.sessions.get(webSocket);
+        if (sessionService) {
+          sessionService.close();
         }
-        this.sessions.delete(connection);
+        this.sessions.delete(webSocket);
       });
     } catch (error) {
       console.error('[ChatController] Error handling browser chat stream:', error);
       // Clean up on error
-      const transport = this.transports.get(connection);
-      if (transport) {
-        transport.close();
-        this.transports.delete(connection);
+      const sessionService = this.sessions.get(webSocket);
+      if (sessionService) {
+        sessionService.close();
       }
-      this.sessions.delete(connection);
-      connection.close();
+      this.sessions.delete(webSocket);
+      webSocket.close();
     }
   }
 
@@ -111,7 +101,6 @@ export class ChatController {
       message: 'Browser Chat Service is running!',
       transport: 'browser-chat',
       activeSessions: this.sessions.size,
-      activeTransports: this.transports.size,
     });
   }
 }
