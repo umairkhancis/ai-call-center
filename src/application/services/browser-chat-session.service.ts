@@ -42,7 +42,7 @@ export class BrowserChatSessionService {
 
   constructor(browserWebSocket: WebSocket) {
     this.browserWebSocket = browserWebSocket;
-    this.setupBrowserEventsHandlers();
+    this.setupBrowserWebSocketEventHanlers();
   }
 
   /**
@@ -67,7 +67,7 @@ export class BrowserChatSessionService {
       });
 
       // Setup event handlers for the session
-      this.setupRealTimeSessionEventsHandlers();
+      this.setupRealTimeSessionEventHandlers();
 
       // Connect
       await this.realtimeSession.connect({ apiKey: config.apiKey });
@@ -87,7 +87,7 @@ export class BrowserChatSessionService {
    * Setup browser WebSocket event handlers
    * Handles messages from browser and forwards them to OpenAI
    */
-  private setupBrowserEventsHandlers(): void {
+  private setupBrowserWebSocketEventHanlers(): void {
     this.browserWebSocket.on('message', (data: Buffer) => {
       try {
         const message: BrowserMessage = JSON.parse(data.toString());
@@ -126,7 +126,7 @@ export class BrowserChatSessionService {
    * Setup OpenAI session event handlers
    * Handles responses from OpenAI and forwards them to browser
    */
-  private setupRealTimeSessionEventsHandlers(): void {
+  private setupRealTimeSessionEventHandlers(): void {
     if (!this.realtimeSession) return;
 
     // Handle text responses from OpenAI
