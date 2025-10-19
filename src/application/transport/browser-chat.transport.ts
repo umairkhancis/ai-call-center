@@ -103,7 +103,6 @@ export class BrowserChatTransportLayer {
 
     // Handle text responses from OpenAI
     this.openAISession.transport.on('response.text.delta', (event: OpenAIMessage) => {
-      console.log('[BrowserTransport] OpenAI response delta:', event.delta);
       this.sendToBrowser({
         type: 'assistant.message.delta',
         text: event.delta || '',
