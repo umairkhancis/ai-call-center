@@ -10,6 +10,8 @@ This application enables real-time conversations with an AI agent through multip
 
 It uses OpenAI's Realtime API for natural language understanding and generation, with configurable transport modes that can be enabled independently or simultaneously.
 
+<img width="1727" height="950" alt="Screenshot 2025-10-20 at 01 45 37" src="https://github.com/user-attachments/assets/488e3c05-efca-4403-bdda-5a5f794e8113" />
+
 ## System Architecture Overview
 
 <img width="588" height="727" alt="Screenshot 2025-10-20 at 01 18 09" src="https://github.com/user-attachments/assets/d15720cb-e14e-47c1-860b-3b99b7779c2c" />
