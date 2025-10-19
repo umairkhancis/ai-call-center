@@ -87,25 +87,85 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Input Channels"
-        Browser[Browser Chat<br/>Text Input]
-        Phone[Phone Call<br/>Voice Input]
+        Browser[Browser<br/>Text Input]
+        PhoneCall[Phone Call<br/>Voice Input]
     end
     
-    subgraph "Core System"
-        Server[AI Call Center<br/>Server]
-        Agent[Greeter Agent<br/>Same Logic]
-        OpenAI[OpenAI<br/>Realtime API]
-        Tools[Tools<br/>Weather, Secret, MCP]
+    subgraph "Session Management"
+        BrowserSession[Browser Session Service<br/>BrowserChatSessionService]
+        CallSession[Call Session Service<br/>CallChatSessionService]
     end
     
-    Browser -->|WebSocket<br/>JSON| Server
-    Phone -->|Twilio<br/>Audio| Server
-    Server --> Agent
-    Agent --> OpenAI
-    Agent --> Tools
+    subgraph "OpenAI Integration"
+        RealtimeSession[OpenAI Realtime<br/>Session Instance]
+        RealtimeAgent[OpenAI Realtime<br/>Agent]
+        OpenAIServer[OpenAI<br/>Server]
+    end
     
-    style Agent fill:#e1f5fe
-    style Tools fill:#e8f5e8
+    %% WebSocket connections between input channels and session services
+    Browser -.->|WebSocket<br/>Connection<br/>/chat-stream| BrowserSession
+    PhoneCall -.->|WebSocket<br/>Connection<br/>/media-stream| CallSession
+    
+    %% Session services to OpenAI components
+    BrowserSession -->|Creates & Manages| RealtimeSession
+    CallSession -->|Creates & Manages| RealtimeSession
+    
+    %% OpenAI component relationships
+    RealtimeSession -->|Uses| RealtimeAgent
+    RealtimeSession -->|Connects to| OpenAIServer
+    RealtimeAgent -->|Processes via| OpenAIServer
+    
+    %% Styling
+    style Browser fill:#e3f2fd
+    style PhoneCall fill:#e3f2fd
+    style BrowserSession fill:#e8f5e8
+    style CallSession fill:#e8f5e8
+    style RealtimeSession fill:#fff3e0
+    style RealtimeAgent fill:#f3e5f5
+    style OpenAIServer fill:#fff2cc
+```
+
+## System Architecture High Level Design
+
+```mermaid
+graph TB
+    subgraph "Input Channels"
+        Browser[Browser<br/>Text Input]
+        PhoneCall[Phone Call<br/>Voice Input]
+    end
+    
+    subgraph "Session Management"
+        BrowserSession[BrowserChatSessionService]
+        CallSession[CallChatSessionService]
+    end
+    
+    subgraph "OpenAI Integration"
+        RealtimeSession[OpenAI <br/> RealtimeSession]
+        RealtimeAgent[OpenAI <br/> RealtimeAgent]
+        OpenAIServer[OpenAI<br/>Server]
+    end
+    
+    %% WebSocket connections between input channels and session services
+    Browser <-.->|WebSocket<br/>Connection<br/>/chat-stream| BrowserSession
+    PhoneCall <-.->|Twilio<br/>Connection<br/>/media-stream| CallSession
+    
+    %% Session services to OpenAI components
+    BrowserSession <-->|Events| RealtimeSession
+    CallSession <-->|Events| RealtimeSession
+    
+    %% OpenAI component relationships
+    RealtimeSession -->|Uses| RealtimeAgent
+    RealtimeSession <-->|WebSocket<br/>Connection| OpenAIServer
+    RealtimeAgent -->|Relay| OpenAIServer
+    
+    %% Styling
+    style Browser fill:#e3f2fd
+    style PhoneCall fill:#e3f2fd
+    style BrowserSession fill:#e8f5e8
+    style CallSession fill:#e8f5e8
+    style RealtimeSession fill:#fff3e0
+    style RealtimeAgent fill:#f3e5f5
+    style OpenAIServer fill:#fff2cc
 ```
 
 ## Core Tool Flow
