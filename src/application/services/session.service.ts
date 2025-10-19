@@ -56,8 +56,6 @@ export class SessionService {
       config: {
         // Configure for text-only mode (no audio)
         modalities: ['text'],
-        // Turn transcription can be set to null for text-only mode
-        turn_detection: null,
       },
     });
 
